@@ -1,30 +1,36 @@
 import express from "express";
-import cors from "cors";
-import morgan from "morgan";
-
-import * as middleware from "./utils/middleware.js";
-import helloRoute from "./routes/helloRouter.js";
+import axios from "axios";
 
 const app = express();
-
-// parse json request body
 app.use(express.json());
 
-// enable cors
-app.use(cors());
+const GEMINI_KEY = process.env.GEMINI_API_KEY;
 
-// request logger middleware
-app.use(morgan("tiny"));
-
-// healthcheck endpoint
-app.get("/", (req, res) => {
-  res.status(200).send({ status: "ok" });
+app.get("/hello", (req, res) => {
+  res.send("Server is running!");
 });
 
-app.use("/hello", helloRoute);
+app.post("/gemini", async (req, res) => {
+  const { prompt } = req.body;
+  if (!prompt) return res.status(400).send({ error: "No prompt provided" });
 
-// custom middleware
-app.use(middleware.unknownEndpoint);
-app.use(middleware.errorHandler);
+  try {
+    const response = await axios.post(
+      "https://api.gemini.com/v1/responses", // replace with the actual Gemini endpoint
+      { prompt },
+      {
+        headers: {
+          Authorization: `Bearer ${GEMINI_KEY}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    res.send({ text: response.data.text }); // return just the text output
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: "Gemini request failed" });
+  }
+});
 
 export default app;
